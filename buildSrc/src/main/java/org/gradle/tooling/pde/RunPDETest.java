@@ -125,6 +125,7 @@ public class RunPDETest extends DefaultTask {
             jvmArgs.add("-XstartOnFirstThread");
         }
         javaExecHandleBuilder.setJvmArgs(jvmArgs);
+        javaExecHandleBuilder.setWorkingDir(getProject().getBuildDir());
 
         Future<?> eclipseJob = threadPool.submit(new Runnable() {
             @Override
@@ -139,6 +140,7 @@ public class RunPDETest extends DefaultTask {
             @Override
             public void run() {
                 PDETestListener pdeTestListener = new PDETestListener(this, suiteName);
+                pdeTestListener.setOutputFile(new File(getProject().getBuildDir(), "TEST-" + suiteName + ".xml"));
                 new RemoteTestRunnerClient().startListening(new ITestRunListener2[]{pdeTestListener}, pdeTestPort);
                 LOGGER.info("Listening on port " + pdeTestPort + " for test suite " + suiteName + " results ...");
                 synchronized (this) {

@@ -33,13 +33,13 @@ public class PDETestListener implements ITestRunListener2 {
         junitTestSuite.setProperties(System.getProperties());
     }
 
-    public void setOutputFile(String filename) {
-        outputFile = new File(filename);
+    public void setOutputFile(File filename) {
+        outputFile = filename;
     }
 
     public File getOutputFile() {
         if (outputFile == null) {
-            setOutputFile("TEST-" + suiteName + ".xml");
+            setOutputFile(new File("TEST-" + suiteName + ".xml"));
         }
         return outputFile;
     }
