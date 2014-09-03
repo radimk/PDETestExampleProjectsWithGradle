@@ -10,6 +10,7 @@
  */
 
 include 'app'
+include 'intTestImage'
 include 'PhoneBookExample'
 include 'PhoneBookExample-test'
 

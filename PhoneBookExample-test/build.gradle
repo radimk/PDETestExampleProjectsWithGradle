@@ -14,3 +14,8 @@ jar {
   }
 }
 
+task integTest(type: org.gradle.tooling.pde.RunPDETest,
+        dependsOn: [':intTestImage:buildProduct_linux_x86_64', ':intTestImage:prepareRunConfig']) {
+    inputs.files project(':intTestImage').task(':prepareRunConfig').outputs
+    intImageTestProject project(':intTestImage')
+}
