@@ -3,6 +3,8 @@ apply plugin: 'org.akhikhl.wuff.eclipse-ide-bundle'
 
 dependencies {
   compile "${eclipseMavenGroup}:org.eclipse.core.commands:+"
+  compile project(':PhoneBookExample')
+  compile 'junit:junit:3.8.2'
 }
 
 jar {

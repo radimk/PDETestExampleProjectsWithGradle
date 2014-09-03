@@ -2,9 +2,8 @@ apply plugin: 'org.akhikhl.wuff.eclipse-ide-app'
 
 dependencies {
   compile project(':PhoneBookExample')
-  // won't be necessary once we add transitive dependency but add it here for easy testing
-  compile "${eclipseMavenGroup}:org.eclipse.jdt:+"
-  compile "${eclipseMavenGroup}:org.eclipse.jdt.ui:+"
+  // enable if you need to check that test bundles build and install correctly
+  // compile project(':PhoneBookExample-test')
 }
 
 wuff {
