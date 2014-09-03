@@ -1,0 +1,20 @@
+apply plugin: 'org.akhikhl.wuff.eclipse-ide-app'
+
+dependencies {
+  compile project(':PhoneBookExample')
+  // won't be necessary once we add transitive dependency but add it here for easy testing
+  compile "${eclipseMavenGroup}:org.eclipse.jdt:+"
+  compile "${eclipseMavenGroup}:org.eclipse.jdt.ui:+"
+}
+
+wuff {
+  filterHtml = true
+}
+
+products {
+  product platform: 'linux', arch: 'x86_32'
+  product platform: 'linux', arch: 'x86_64'
+  product platform: 'windows', arch: 'x86_32'
+  product platform: 'windows', arch: 'x86_64'
+}
+

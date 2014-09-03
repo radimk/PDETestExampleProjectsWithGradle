@@ -9,6 +9,7 @@
  * in the user guide at http://gradle.org/docs/2.0/userguide/multi_project_builds.html
  */
 
+include 'app'
 include 'PhoneBookExample'
 include 'PhoneBookExample-test'
 
