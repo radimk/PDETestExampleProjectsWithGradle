@@ -7,8 +7,6 @@ import org.eclipse.jdt.internal.junit.model.RemoteTestRunnerClient;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
-import org.gradle.api.Task;
-import org.gradle.api.internal.ConventionTask;
 import org.gradle.api.internal.file.FileResolver;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
@@ -80,15 +78,13 @@ public class RunPDETest extends DefaultTask {
                 new File(runPluginsDir, equinoxLauncherFile.getName().replaceAll(PluginUtils.getEclipsePluginMask(), "$1_$2"))));
         javaExecHandleBuilder.setMain("org.eclipse.equinox.launcher.Main");
         List<String> programArgs = new ArrayList<String>();
-        // TODO needed?
+        // TODO how much do we need? -os linux -ws gtk -arch x86_64 -nl en_US
         programArgs.add("-os");
         programArgs.add("linux");
         programArgs.add("-ws");
         programArgs.add("gtk");
         programArgs.add("-arch");
         programArgs.add("x86_64");
-        programArgs.add("-nl");
-        programArgs.add("en_US");
 
         programArgs.add("-consoleLog");
         programArgs.add("-version");
@@ -106,15 +102,12 @@ public class RunPDETest extends DefaultTask {
         // TODO allow to run also non-UI tests
         programArgs.add("org.eclipse.pde.junit.runtime.uitestapplication"); // or org.eclipse.pde.junit.runtime.coretestapplication
         programArgs.add("-product org.eclipse.platform.ide");
-        // TODO use URI (file:///path/to/workspace/dir/)?
+        // alternatively can use URI for -data and -configuration (file:///path/to/dir/)
         programArgs.add("-data");
         programArgs.add(runDir.getAbsolutePath());
-        // TODO use URI (file:///path/to/config/dir/)?
         programArgs.add("-configuration");
         programArgs.add(configIniFile.getParentFile().getAbsolutePath());
-        // TODO should not be needed. this is to tell PDE to use project outputs from workspace
-//        programArgs.add("-dev");
-//        programArgs.add("file:/home/radim/eclipse/workspace-luna/.metadata/.plugins/org.eclipse.pde.core/pde-junit/dev.properties");
+
         // TODO get from current project
         programArgs.add("-testpluginname");
         programArgs.add("PhoneBookExample");
