@@ -1,0 +1,20 @@
+buildscript {
+  repositories {
+    jcenter()
+  }
+
+  dependencies {
+    classpath 'org.akhikhl.wuff:wuff-plugin:0.0.12'
+  }
+}
+
+apply plugin: 'org.akhikhl.wuff.eclipse-config'
+
+subprojects {
+  repositories {
+    jcenter()
+  }
+}
+
+version = "1.0.0.0"
+
