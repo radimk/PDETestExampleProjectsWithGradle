@@ -1,17 +1,25 @@
 package org.gradle.tooling.pde;
 
+import com.google.common.base.Joiner;
 import org.akhikhl.unpuzzle.PlatformConfig;
 import org.akhikhl.wuff.PluginUtils;
+import org.apache.commons.lang.text.StrBuilder;
 import org.eclipse.jdt.internal.junit.model.ITestRunListener2;
 import org.eclipse.jdt.internal.junit.model.RemoteTestRunnerClient;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
+import org.gradle.api.file.FileTree;
 import org.gradle.api.internal.file.FileResolver;
-import org.gradle.api.internal.tasks.testing.TestResultProcessor;
+import org.gradle.api.internal.tasks.testing.*;
+import org.gradle.api.internal.tasks.testing.detection.DefaultTestClassScanner;
 import org.gradle.api.internal.tasks.testing.detection.TestExecuter;
+import org.gradle.api.internal.tasks.testing.detection.TestFrameworkDetector;
+import org.gradle.api.internal.tasks.testing.processors.TestMainAction;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.tasks.testing.Test;
+import org.gradle.api.tasks.testing.TestOutputEvent;
+import org.gradle.internal.TrueTimeProvider;
 import org.gradle.process.ExecResult;
 import org.gradle.process.internal.DefaultJavaExecAction;
 import org.gradle.process.internal.JavaExecAction;
@@ -84,9 +92,8 @@ public class EclipseTestExecuter implements TestExecuter {
         programArgs.add("org.eclipse.jdt.internal.junit4.runner.JUnit4TestLoader");
         programArgs.add("-loaderpluginname");
         programArgs.add("org.eclipse.jdt.junit4.runtime");
-        // TODO generate list of test classes
         programArgs.add("-classNames");
-        programArgs.add("phonebookexample.dialogs.PhoneBookEntryEditorDialogTest");
+        programArgs.add(collectTestNames(testTask));
         programArgs.add("-application");
         programArgs.add(getExtension(testTask).getApplicationName());
         programArgs.add("-product org.eclipse.platform.ide");
@@ -157,5 +164,63 @@ public class EclipseTestExecuter implements TestExecuter {
 
     private FileResolver getFileResolver(Test testTask) {
         return testTask.getProject().getPlugins().findPlugin(EclipseTestPlugin.class).fileResolver;
+    }
+
+    private String collectTestNames(Test testTask) {
+        ClassNameCollectingProcessor processor = new ClassNameCollectingProcessor();
+        Runnable detector;
+        final FileTree testClassFiles = testTask.getCandidateClassFiles();
+        if (testTask.isScanForTestClasses()) {
+            TestFrameworkDetector testFrameworkDetector = testTask.getTestFramework().getDetector();
+            testFrameworkDetector.setTestClassesDirectory(testTask.getTestClassesDir());
+            testFrameworkDetector.setTestClasspath(testTask.getClasspath());
+            detector = new DefaultTestClassScanner(testClassFiles, testFrameworkDetector, processor);
+        } else {
+            detector = new DefaultTestClassScanner(testClassFiles, null, processor);
+        }
+        new TestMainAction(detector, processor, new NoopTestResultProcessor(), new TrueTimeProvider()).run();
+        LOGGER.debug("collected test class names: {}", processor.classNames);
+        StringBuilder sb = new StringBuilder();
+        for (String clzName : processor.classNames) {
+            if (sb.length() > 0) {
+                sb.append(',');
+            }
+            sb.append(clzName);
+        }
+        return sb.toString();
+    }
+
+    public static class NoopTestResultProcessor implements TestResultProcessor {
+
+        @Override
+        public void started(TestDescriptorInternal testDescriptorInternal, TestStartEvent testStartEvent) {}
+
+        @Override
+        public void completed(Object o, TestCompleteEvent testCompleteEvent) {}
+
+        @Override
+        public void output(Object o, TestOutputEvent testOutputEvent) {}
+
+        @Override
+        public void failure(Object o, Throwable throwable) {}
+    }
+
+    private class ClassNameCollectingProcessor implements TestClassProcessor {
+        public List<String> classNames = new ArrayList<String>();
+
+        @Override
+        public void startProcessing(TestResultProcessor testResultProcessor) {
+            // no-op
+        }
+
+        @Override
+        public void processTestClass(TestClassRunInfo testClassRunInfo) {
+            classNames.add(testClassRunInfo.getTestClassName());
+        }
+
+        @Override
+        public void stop() {
+            // no-op
+        }
     }
 }
