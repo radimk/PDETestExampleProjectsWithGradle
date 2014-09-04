@@ -64,12 +64,6 @@ public class PrepareEclipseTestTask extends DefaultTask {
 
     @TaskAction
     void executeTests() {
-        checkPreconditions();
     }
 
-    private void checkPreconditions() {
-        if (getTestPluginName() == null) {
-            throw new GradleException("Need to specify testPluginName property.");
-        }
-    }
 }

@@ -3,6 +3,13 @@ import org.gradle.tooling.pde.EclipseTestExecuter
 apply plugin: 'java'
 apply plugin: 'org.akhikhl.wuff.eclipse-ide-bundle'
 
+project.extensions.create('eclipseTestExt', org.gradle.tooling.pde.EclipseTestExtension)
+
+eclipseTestExt {
+  intImageTestProject project(':intTestImage')
+  testPluginName 'PhoneBookExample'
+}
+
 dependencies {
   compile "${eclipseMavenGroup}:org.eclipse.core.commands:+"
   compile project(':PhoneBookExample')
@@ -20,7 +27,6 @@ task integTest(type: org.gradle.tooling.pde.RunPDETest,
         dependsOn: [':intTestImage:buildProduct_linux_x86_64', ':intTestImage:prepareRunConfig']) {
     inputs.files project(':intTestImage').task(':prepareRunConfig').outputs
     intImageTestProject project(':intTestImage')
-    testPluginName 'PhoneBookExample'
 }
 
 sourceSets {
@@ -43,8 +49,6 @@ configurations {
 
 task prepareEclipseTest(type: org.gradle.tooling.pde.PrepareEclipseTestTask,
         dependsOn: [':intTestImage:buildProduct_linux_x86_64', ':intTestImage:prepareRunConfig']) {
-    intImageTestProject project(':intTestImage')
-    testPluginName 'PhoneBookExample'
 }
 
 task eclipseTest(type: Test, dependsOn: 'prepareEclipseTest') {

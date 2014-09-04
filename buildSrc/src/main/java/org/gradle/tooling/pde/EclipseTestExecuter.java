@@ -15,7 +15,6 @@ import org.gradle.api.tasks.testing.Test;
 import org.gradle.process.ExecResult;
 import org.gradle.process.internal.DefaultJavaExecAction;
 import org.gradle.process.internal.JavaExecAction;
-import pde.test.utils.PDETestListener;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -28,6 +27,7 @@ public class EclipseTestExecuter implements TestExecuter {
     @Override
     public void execute(Test test, TestResultProcessor testResultProcessor) {
         LOGGER.info("Executing tests in Eclipse");
+        checkPreconditions(test);
 
         int pdeTestPort = new PDETestPortLocator().locatePDETestPortNumber();
         if (pdeTestPort == -1) {
@@ -38,8 +38,14 @@ public class EclipseTestExecuter implements TestExecuter {
         runPDETestsInEclipse(test, testResultProcessor, pdeTestPort);
     }
 
-    public String getTestPluginName() {
-        return "PhoneBookExample";
+    private EclipseTestExtension getExtension(Test testTask) {
+        return (EclipseTestExtension) testTask.getProject().getExtensions().findByName("eclipseTestExt");
+    }
+
+    private void checkPreconditions(Test test) {
+        if (getExtension(test).getTestPluginName() == null) {
+            throw new GradleException("Need to specify testPluginName property.");
+        }
     }
 
     private void runPDETestsInEclipse(final Test testTask, final TestResultProcessor testResultProcessor, final int pdeTestPort) {
@@ -69,7 +75,7 @@ public class EclipseTestExecuter implements TestExecuter {
         programArgs.add("-arch");
         programArgs.add("x86_64");
 
-        programArgs.add("-consoleLog");
+        // programArgs.add("-consoleLog");
         programArgs.add("-version");
         programArgs.add("3");
         programArgs.add("-port");
@@ -93,7 +99,7 @@ public class EclipseTestExecuter implements TestExecuter {
 
         // TODO get from current project
         programArgs.add("-testpluginname");
-        programArgs.add(getTestPluginName());
+        programArgs.add(getExtension(testTask).getTestPluginName());
 
         javaExecHandleBuilder.setArgs(programArgs);
         List<String> jvmArgs = new ArrayList<String>();
@@ -118,7 +124,7 @@ public class EclipseTestExecuter implements TestExecuter {
             }
         });
         //TODO
-        final String suiteName = getTestPluginName();
+        final String suiteName = getExtension(testTask).getTestPluginName();
         Future<?> testCollectorJob = threadPool.submit(new Runnable() {
             @Override
             public void run() {
@@ -147,9 +153,7 @@ public class EclipseTestExecuter implements TestExecuter {
     }
 
     private Project getIntImageTestProject(Test testTask) {
-        PrepareEclipseTestTask prepareEclipseTest =
-                (PrepareEclipseTestTask) testTask.getProject().getTasks().findByName("prepareEclipseTest");
-        return prepareEclipseTest.getIntImageTestProject();
+        return getExtension(testTask).getIntImageTestProject();
     }
 
     private FileResolver getFileResolver(Test testTask) {
