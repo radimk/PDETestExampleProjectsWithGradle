@@ -88,8 +88,7 @@ public class EclipseTestExecuter implements TestExecuter {
         programArgs.add("-classNames");
         programArgs.add("phonebookexample.dialogs.PhoneBookEntryEditorDialogTest");
         programArgs.add("-application");
-        // TODO allow to run also non-UI tests
-        programArgs.add("org.eclipse.pde.junit.runtime.uitestapplication"); // or org.eclipse.pde.junit.runtime.coretestapplication
+        programArgs.add(getExtension(testTask).getApplicationName());
         programArgs.add("-product org.eclipse.platform.ide");
         // alternatively can use URI for -data and -configuration (file:///path/to/dir/)
         programArgs.add("-data");

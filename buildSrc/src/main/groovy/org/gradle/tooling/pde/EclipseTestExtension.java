@@ -13,6 +13,12 @@ public class EclipseTestExtension {
 
     private String testPluginName;
 
+    /**
+     * Application launched in Eclipse.
+     * {@code org.eclipse.pde.junit.runtime.coretestapplication} can be used to run non-UI tests.
+     */
+    private String applicationName = "org.eclipse.pde.junit.runtime.uitestapplication";
+
     @Inject
     public FileResolver getFileResolver() {
         throw new UnsupportedOperationException();
@@ -32,5 +38,13 @@ public class EclipseTestExtension {
 
     public void setTestPluginName(String testPluginName) {
         this.testPluginName = testPluginName;
+    }
+
+    public String getApplicationName() {
+        return applicationName;
+    }
+
+    public void setApplicationName(String applicationName) {
+        this.applicationName = applicationName;
     }
 }
