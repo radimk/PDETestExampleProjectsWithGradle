@@ -1,5 +1,3 @@
-import org.gradle.tooling.pde.EclipseTestExecuter
-
 apply plugin: 'java'
 apply plugin: 'org.akhikhl.wuff.eclipse-ide-bundle'
 apply plugin: org.gradle.tooling.pde.EclipseTestPlugin
@@ -22,33 +20,4 @@ jar {
   }
 }
 
-sourceSets {
-    eclipseTest {
-        compileClasspath += main.output + test.output
-        runtimeClasspath += main.output + test.output
-        java {
-            srcDir 'src/main/java'
-        }
-        resources {
-            srcDir 'src/main/resources'
-        }
-    }
-}
-
-configurations {
-    eclipseTestCompile.extendsFrom testCompile
-    eclipseTestRuntime.extendsFrom testRuntime
-}
-
-task eclipseTest(type: Test,
-        dependsOn: [':intTestImage:buildProduct_linux_x86_64', ':intTestImage:prepareRunConfig']) {
-    testExecuter = new EclipseTestExecuter()
-
-    testClassesDir = sourceSets.eclipseTest.output.classesDir
-    classpath = sourceSets.eclipseTest.runtimeClasspath
-    testSrcDirs = []
-    // jvmArgs '-Xmx512m', '-XX:MaxPermSize=256m', '-XX:+HeapDumpOnOutOfMemoryError'
-
-    // reports.junitXml.destination = file("${project.testResultsDir}/$name")
-    reports.html.destination = file("${project.reporting.baseDir}/$name")
-}
+tasks.findByName('eclipseTest').dependsOn([':intTestImage:buildProduct_linux_x86_64', ':intTestImage:prepareRunConfig'])

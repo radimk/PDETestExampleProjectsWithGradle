@@ -3,15 +3,15 @@ apply plugin: 'org.akhikhl.wuff.eclipse-ide-app'
 dependencies {
   compile project(':PhoneBookExample')
   compile project(':PhoneBookExample-test')
-    compile "${eclipseMavenGroup}:org.eclipse.pde:+"
-    compile "${eclipseMavenGroup}:org.eclipse.pde.build:+"
-    compile "${eclipseMavenGroup}:org.eclipse.pde.core:+"
-    compile "${eclipseMavenGroup}:org.eclipse.pde.doc.user:+"
-    compile "${eclipseMavenGroup}:org.eclipse.pde.junit.runtime:+"
-    compile "${eclipseMavenGroup}:org.eclipse.pde.runtime:+"
-    compile "${eclipseMavenGroup}:org.eclipse.pde.ui:+"
-    compile "${eclipseMavenGroup}:org.eclipse.pde.ui.templates:+"
-    compile "${eclipseMavenGroup}:org.eclipse.jdt.junit4.runtime:+"
+    runtime "${eclipseMavenGroup}:org.eclipse.pde:+"
+    runtime "${eclipseMavenGroup}:org.eclipse.pde.build:+"
+    runtime "${eclipseMavenGroup}:org.eclipse.pde.core:+"
+    runtime "${eclipseMavenGroup}:org.eclipse.pde.doc.user:+"
+    runtime "${eclipseMavenGroup}:org.eclipse.pde.junit.runtime:+"
+    runtime "${eclipseMavenGroup}:org.eclipse.pde.runtime:+"
+    runtime "${eclipseMavenGroup}:org.eclipse.pde.ui:+"
+    runtime "${eclipseMavenGroup}:org.eclipse.pde.ui.templates:+"
+    runtime "${eclipseMavenGroup}:org.eclipse.jdt.junit4.runtime:+"
 }
 
 wuff {
