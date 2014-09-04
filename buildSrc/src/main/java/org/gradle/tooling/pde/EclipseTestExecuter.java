@@ -4,63 +4,30 @@ import org.akhikhl.unpuzzle.PlatformConfig;
 import org.akhikhl.wuff.PluginUtils;
 import org.eclipse.jdt.internal.junit.model.ITestRunListener2;
 import org.eclipse.jdt.internal.junit.model.RemoteTestRunnerClient;
-import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.internal.file.FileResolver;
+import org.gradle.api.internal.tasks.testing.TestResultProcessor;
+import org.gradle.api.internal.tasks.testing.detection.TestExecuter;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
-import org.gradle.api.tasks.TaskAction;
+import org.gradle.api.tasks.testing.Test;
 import org.gradle.process.ExecResult;
 import org.gradle.process.internal.DefaultJavaExecAction;
 import org.gradle.process.internal.JavaExecAction;
 import pde.test.utils.PDETestListener;
 
-import javax.inject.Inject;
 import java.io.File;
-import java.io.IOException;
-import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
-public class RunPDETest extends DefaultTask {
-    private static final Logger LOGGER = Logging.getLogger(RunPDETest.class);
+public class EclipseTestExecuter implements TestExecuter {
+    private static final Logger LOGGER = Logging.getLogger(EclipseTestExecuter.class);
 
-    private JavaExecAction javaExecHandleBuilder;
-
-    private Project intImageTestProject;
-
-    private String testPluginName;
-
-    public RunPDETest() {
-        javaExecHandleBuilder = new DefaultJavaExecAction(getFileResolver());
-    }
-
-    @Inject
-    public FileResolver getFileResolver() {
-        throw new UnsupportedOperationException();
-    }
-
-    public Project getIntImageTestProject() {
-        return intImageTestProject;
-    }
-
-    public void setIntImageTestProject(Project intImageTestProject) {
-        this.intImageTestProject = intImageTestProject;
-    }
-
-    public String getTestPluginName() {
-        return testPluginName;
-    }
-
-    public void setTestPluginName(String testPluginName) {
-        this.testPluginName = testPluginName;
-    }
-
-    @TaskAction
-    void executeTests() {
-        checkPreconditions();
+    @Override
+    public void execute(Test test, TestResultProcessor testResultProcessor) {
+        LOGGER.info("Executing tests in Eclipse");
 
         int pdeTestPort = new PDETestPortLocator().locatePDETestPortNumber();
         if (pdeTestPort == -1) {
@@ -68,30 +35,29 @@ public class RunPDETest extends DefaultTask {
         }
         LOGGER.info("Will use port {} to communicate with Eclipse.", pdeTestPort);
 
-        runPDETestsInEclipse(pdeTestPort);
+        runPDETestsInEclipse(test, testResultProcessor, pdeTestPort);
     }
 
-    private void checkPreconditions() {
-        if (getTestPluginName() == null) {
-            throw new GradleException("Need to specify testPluginName property.");
-        }
+    public String getTestPluginName() {
+        return "PhoneBookExample";
     }
 
-    private void runPDETestsInEclipse(final int pdeTestPort) {
+    private void runPDETestsInEclipse(final Test testTask, final TestResultProcessor testResultProcessor, final int pdeTestPort) {
         ExecutorService threadPool = Executors.newFixedThreadPool(2);
 
         // TODO delete workspace before run?
-        File runDir = new File(getProject().getBuildDir(), getName());
+        File runDir = new File(testTask.getProject().getBuildDir(), testTask.getName());
 
         // TODO fix the dependency
         // File configIniFile = getInputs().getFiles().getSingleFile();
-        File configIniFile = new File(getIntImageTestProject().getBuildDir(), "run/configuration/config.ini");
+        File configIniFile = new File(getIntImageTestProject(testTask).getBuildDir(), "run/configuration/config.ini");
 
         File runPluginsDir = new File(configIniFile, "../../plugins");
-        LOGGER.info("Will use config ini file {} from project {}, plugins dir {}", configIniFile, getIntImageTestProject(), runPluginsDir);
-        File equinoxLauncherFile = PluginUtils.getEquinoxLauncherFile(getIntImageTestProject());
+        LOGGER.info("Will use config ini file {} from project {}, plugins dir {}", configIniFile, getIntImageTestProject(testTask), runPluginsDir);
+        File equinoxLauncherFile = PluginUtils.getEquinoxLauncherFile(getIntImageTestProject(testTask));
 
-        javaExecHandleBuilder.setClasspath(getIntImageTestProject().files(
+        final JavaExecAction javaExecHandleBuilder = new DefaultJavaExecAction(getFileResolver(testTask));
+        javaExecHandleBuilder.setClasspath(getIntImageTestProject(testTask).files(
                 new File(runPluginsDir, equinoxLauncherFile.getName().replaceAll(PluginUtils.getEclipsePluginMask(), "$1_$2"))));
         javaExecHandleBuilder.setMain("org.eclipse.equinox.launcher.Main");
         List<String> programArgs = new ArrayList<String>();
@@ -142,7 +108,7 @@ public class RunPDETest extends DefaultTask {
             jvmArgs.add("-XstartOnFirstThread");
         }
         javaExecHandleBuilder.setJvmArgs(jvmArgs);
-        javaExecHandleBuilder.setWorkingDir(getProject().getBuildDir());
+        javaExecHandleBuilder.setWorkingDir(testTask.getProject().getBuildDir());
 
         Future<?> eclipseJob = threadPool.submit(new Runnable() {
             @Override
@@ -156,8 +122,7 @@ public class RunPDETest extends DefaultTask {
         Future<?> testCollectorJob = threadPool.submit(new Runnable() {
             @Override
             public void run() {
-                PDETestListener pdeTestListener = new PDETestListener(this, suiteName);
-                pdeTestListener.setOutputFile(new File(getProject().getBuildDir(), "TEST-" + suiteName + ".xml"));
+                EclipseTestListener pdeTestListener = new EclipseTestListener(testResultProcessor, suiteName, this);
                 new RemoteTestRunnerClient().startListening(new ITestRunListener2[]{pdeTestListener}, pdeTestPort);
                 LOGGER.info("Listening on port " + pdeTestPort + " for test suite " + suiteName + " results ...");
                 synchronized (this) {
@@ -179,5 +144,17 @@ public class RunPDETest extends DefaultTask {
         } catch (TimeoutException e) {
             throw new GradleException("Test execution failed", e);
         }
+    }
+
+    private Project getIntImageTestProject(Test testTask) {
+        PrepareEclipseTestTask prepareEclipseTest =
+                (PrepareEclipseTestTask) testTask.getProject().getTasks().findByName("prepareEclipseTest");
+        return prepareEclipseTest.getIntImageTestProject();
+    }
+
+    private FileResolver getFileResolver(Test testTask) {
+        PrepareEclipseTestTask prepareEclipseTest =
+                (PrepareEclipseTestTask) testTask.getProject().getTasks().findByName("prepareEclipseTest");
+        return prepareEclipseTest.getFileResolver();
     }
 }
