@@ -22,6 +22,9 @@ class EclipseTestPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.extensions.create('eclipseTestExt', EclipseTestExtension)
         project.getPlugins().apply(JavaPlugin)
+        project.getPlugins().apply('org.akhikhl.wuff.eclipse-ide-bundle')
+        // TODO cannot apply together with this and it means we need to have separate project to assemble testing Eclipse instance
+        // project.getPlugins().apply('org.akhikhl.wuff.eclipse-ide-app')
 
         createSourceSet(project)
         createConfigurations(project)

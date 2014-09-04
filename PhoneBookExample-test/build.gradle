@@ -1,5 +1,3 @@
-apply plugin: 'java'
-apply plugin: 'org.akhikhl.wuff.eclipse-ide-bundle'
 apply plugin: org.gradle.tooling.pde.EclipseTestPlugin
 
 eclipseTestExt {
