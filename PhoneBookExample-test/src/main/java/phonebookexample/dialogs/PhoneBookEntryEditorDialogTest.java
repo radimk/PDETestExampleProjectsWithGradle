@@ -52,7 +52,7 @@ public class PhoneBookEntryEditorDialogTest extends TestCase {
         dialog.numberText.setText("not a number");
         assertVisibleEnabled(dialog.getButton(IDialogConstants.OK_ID), "OK Button", true, false);
         assertVisibleEnabled(dialog.getButton(IDialogConstants.CANCEL_ID), "Cancel Button", true, true);
-        fail("testing");
+        // fail("testing");
     }
     
     public void testValidNumberEnablesOKButton() throws Exception {

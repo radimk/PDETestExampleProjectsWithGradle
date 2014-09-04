@@ -2,8 +2,7 @@ import org.gradle.tooling.pde.EclipseTestExecuter
 
 apply plugin: 'java'
 apply plugin: 'org.akhikhl.wuff.eclipse-ide-bundle'
-
-project.extensions.create('eclipseTestExt', org.gradle.tooling.pde.EclipseTestExtension)
+apply plugin: org.gradle.tooling.pde.EclipseTestPlugin
 
 eclipseTestExt {
   intImageTestProject project(':intTestImage')
@@ -21,12 +20,6 @@ jar {
     instruction 'Bundle-RequiredExecutionEnvironment', 'JavaSE-1.6'
     instruction 'Bundle-Version', project.version
   }
-}
-
-task integTest(type: org.gradle.tooling.pde.RunPDETest,
-        dependsOn: [':intTestImage:buildProduct_linux_x86_64', ':intTestImage:prepareRunConfig']) {
-    inputs.files project(':intTestImage').task(':prepareRunConfig').outputs
-    intImageTestProject project(':intTestImage')
 }
 
 sourceSets {
@@ -47,11 +40,8 @@ configurations {
     eclipseTestRuntime.extendsFrom testRuntime
 }
 
-task prepareEclipseTest(type: org.gradle.tooling.pde.PrepareEclipseTestTask,
+task eclipseTest(type: Test,
         dependsOn: [':intTestImage:buildProduct_linux_x86_64', ':intTestImage:prepareRunConfig']) {
-}
-
-task eclipseTest(type: Test, dependsOn: 'prepareEclipseTest') {
     testExecuter = new EclipseTestExecuter()
 
     testClassesDir = sourceSets.eclipseTest.output.classesDir

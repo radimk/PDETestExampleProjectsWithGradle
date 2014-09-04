@@ -157,8 +157,6 @@ public class EclipseTestExecuter implements TestExecuter {
     }
 
     private FileResolver getFileResolver(Test testTask) {
-        PrepareEclipseTestTask prepareEclipseTest =
-                (PrepareEclipseTestTask) testTask.getProject().getTasks().findByName("prepareEclipseTest");
-        return prepareEclipseTest.getFileResolver();
+        return testTask.getProject().getPlugins().findPlugin(EclipseTestPlugin.class).getFileResolver();
     }
 }
