@@ -18,4 +18,4 @@ jar {
   }
 }
 
-tasks.findByName('eclipseTest').dependsOn([':intTestImage:buildProduct_linux_x86_64', ':intTestImage:prepareRunConfig'])
+tasks.findByName('eclipseTest').dependsOn(':intTestImage:prepareRunConfig')

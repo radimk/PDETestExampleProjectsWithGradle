@@ -13,15 +13,3 @@ dependencies {
     runtime "${eclipseMavenGroup}:org.eclipse.pde.ui.templates:+"
     runtime "${eclipseMavenGroup}:org.eclipse.jdt.junit4.runtime:+"
 }
-
-wuff {
-  filterHtml = true
-}
-
-products {
-  product platform: 'linux', arch: 'x86_32'
-  product platform: 'linux', arch: 'x86_64'
-  product platform: 'windows', arch: 'x86_32'
-  product platform: 'windows', arch: 'x86_64'
-}
-
