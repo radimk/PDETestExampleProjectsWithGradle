@@ -1,9 +1,7 @@
 package org.gradle.tooling.pde;
 
-import com.google.common.base.Joiner;
 import org.akhikhl.unpuzzle.PlatformConfig;
 import org.akhikhl.wuff.PluginUtils;
-import org.apache.commons.lang.text.StrBuilder;
 import org.eclipse.jdt.internal.junit.model.ITestRunListener2;
 import org.eclipse.jdt.internal.junit.model.RemoteTestRunnerClient;
 import org.gradle.api.GradleException;
@@ -77,11 +75,13 @@ public class EclipseTestExecuter implements TestExecuter {
         List<String> programArgs = new ArrayList<String>();
         // TODO how much do we need? -os linux -ws gtk -arch x86_64 -nl en_US
         programArgs.add("-os");
-        programArgs.add("linux");
-        programArgs.add("-ws");
-        programArgs.add("gtk");
+        programArgs.add(PlatformConfig.current_os);
+        if ("linux".equals(PlatformConfig.current_os)) {
+            programArgs.add("-ws");
+            programArgs.add("gtk");
+        }
         programArgs.add("-arch");
-        programArgs.add("x86_64");
+        programArgs.add(PlatformConfig.current_arch);
 
         // programArgs.add("-consoleLog");
         programArgs.add("-version");
@@ -93,7 +93,9 @@ public class EclipseTestExecuter implements TestExecuter {
         programArgs.add("-loaderpluginname");
         programArgs.add("org.eclipse.jdt.junit4.runtime");
         programArgs.add("-classNames");
-        programArgs.add(collectTestNames(testTask));
+        for (String clzName : collectTestNames(testTask)) {
+            programArgs.add(clzName);
+        }
         programArgs.add("-application");
         programArgs.add(getExtension(testTask).getApplicationName());
         programArgs.add("-product org.eclipse.platform.ide");
@@ -166,7 +168,7 @@ public class EclipseTestExecuter implements TestExecuter {
         return testTask.getProject().getPlugins().findPlugin(EclipseTestPlugin.class).fileResolver;
     }
 
-    private String collectTestNames(Test testTask) {
+    private List<String> collectTestNames(Test testTask) {
         ClassNameCollectingProcessor processor = new ClassNameCollectingProcessor();
         Runnable detector;
         final FileTree testClassFiles = testTask.getCandidateClassFiles();
@@ -180,14 +182,7 @@ public class EclipseTestExecuter implements TestExecuter {
         }
         new TestMainAction(detector, processor, new NoopTestResultProcessor(), new TrueTimeProvider()).run();
         LOGGER.debug("collected test class names: {}", processor.classNames);
-        StringBuilder sb = new StringBuilder();
-        for (String clzName : processor.classNames) {
-            if (sb.length() > 0) {
-                sb.append(',');
-            }
-            sb.append(clzName);
-        }
-        return sb.toString();
+        return processor.classNames;
     }
 
     public static class NoopTestResultProcessor implements TestResultProcessor {
