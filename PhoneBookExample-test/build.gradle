@@ -1,3 +1,13 @@
+buildscript {
+  repositories {
+    jcenter()
+  }
+  dependencies {
+    classpath "org.akhikhl.wuff:wuff-plugin:0.0.12"
+  }
+}
+
+apply plugin: "org.akhikhl.wuff.eclipse-ide-bundle"
 apply plugin: org.gradle.tooling.pde.EclipseTestPlugin
 
 eclipseTestExt {

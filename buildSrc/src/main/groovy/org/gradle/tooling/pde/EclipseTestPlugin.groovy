@@ -1,11 +1,11 @@
-package org.gradle.tooling.pde;
+package org.gradle.tooling.pde
 
-import org.gradle.api.Plugin;
-import org.gradle.api.Project;
+import org.gradle.api.Plugin
+import org.gradle.api.Project
 import org.gradle.api.internal.file.FileResolver
 import org.gradle.api.plugins.JavaPlugin
 import org.gradle.api.tasks.SourceSet
-import org.gradle.api.tasks.testing.Test;
+import org.gradle.api.tasks.testing.Test
 
 import javax.inject.Inject
 
@@ -22,9 +22,7 @@ class EclipseTestPlugin implements Plugin<Project> {
     public void apply(Project project) {
         project.extensions.create('eclipseTestExt', EclipseTestExtension)
         project.getPlugins().apply(JavaPlugin)
-        project.getPlugins().apply('org.akhikhl.wuff.eclipse-ide-bundle')
-        // TODO cannot apply together with this and it means we need to have separate project to assemble testing Eclipse instance
-        // project.getPlugins().apply('org.akhikhl.wuff.eclipse-ide-app')
+        // project.getPlugins().apply('org.akhikhl.wuff.eclipse-ide-bundle')
 
         createSourceSet(project)
         createConfigurations(project)
@@ -48,13 +46,22 @@ class EclipseTestPlugin implements Plugin<Project> {
 
     def createTestTask(Project project) {
         def eclipseTest = project.tasks.create('eclipseTest', Test)
+        eclipseTest.description = 'Runs the Eclipse PDE tests.'
         eclipseTest.testExecuter = new EclipseTestExecuter()
 
-        eclipseTest.testClassesDir = project.sourceSets.eclipseTest.output.classesDir
+        eclipseTest.testClassesDir = project.sourceSets['main'].output.classesDir
         eclipseTest.classpath = project.sourceSets.eclipseTest.runtimeClasspath
         eclipseTest.testSrcDirs = []
         // eclipseTest.jvmArgs '-Xmx512m', '-XX:MaxPermSize=256m', '-XX:+HeapDumpOnOutOfMemoryError'
         eclipseTest.reports.html.destination = project.file("${project.reporting.baseDir}/eclipseTest")
 
+        eclipseTest.doFirst {
+            project.file("$project.buildDir/eclipseTest").mkdir()
+        }
+        eclipseTest.systemProperty('osgi.requiredJavaVersion','1.7')
+        eclipseTest.systemProperty('eclipse.pde.launch','true')
+        eclipseTest.systemProperty('eclipse.p2.data.area','@config.dir/p2')
+
+        project.tasks.findByName('check').dependsOn eclipseTest
     }
 }

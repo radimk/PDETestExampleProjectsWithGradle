@@ -1,14 +1,18 @@
 package org.gradle.tooling.pde;
 
 import org.akhikhl.unpuzzle.PlatformConfig;
-import org.akhikhl.wuff.PluginUtils;
 import org.eclipse.jdt.internal.junit.model.ITestRunListener2;
 import org.eclipse.jdt.internal.junit.model.RemoteTestRunnerClient;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.FileTree;
 import org.gradle.api.internal.file.FileResolver;
-import org.gradle.api.internal.tasks.testing.*;
+import org.gradle.api.internal.tasks.testing.TestClassProcessor;
+import org.gradle.api.internal.tasks.testing.TestClassRunInfo;
+import org.gradle.api.internal.tasks.testing.TestCompleteEvent;
+import org.gradle.api.internal.tasks.testing.TestDescriptorInternal;
+import org.gradle.api.internal.tasks.testing.TestResultProcessor;
+import org.gradle.api.internal.tasks.testing.TestStartEvent;
 import org.gradle.api.internal.tasks.testing.detection.DefaultTestClassScanner;
 import org.gradle.api.internal.tasks.testing.detection.TestExecuter;
 import org.gradle.api.internal.tasks.testing.detection.TestFrameworkDetector;
@@ -66,24 +70,36 @@ public class EclipseTestExecuter implements TestExecuter {
 
         File runPluginsDir = new File(configIniFile, "../../plugins");
         LOGGER.info("Will use config ini file {} from project {}, plugins dir {}", configIniFile, getIntImageTestProject(testTask), runPluginsDir);
-        File equinoxLauncherFile = PluginUtils.getEquinoxLauncherFile(getIntImageTestProject(testTask));
+        File equinoxLauncherFile = org.akhikhl.wuff.PluginUtils.getEquinoxLauncherFile(getIntImageTestProject(testTask));
+        LOGGER.info("equinox launcher file {}", equinoxLauncherFile);
 
         final JavaExecAction javaExecHandleBuilder = new DefaultJavaExecAction(getFileResolver(testTask));
         javaExecHandleBuilder.setClasspath(getIntImageTestProject(testTask).files(
-                new File(runPluginsDir, equinoxLauncherFile.getName().replaceAll(PluginUtils.getEclipsePluginMask(), "$1_$2"))));
+                equinoxLauncherFile));
+                // new File(runPluginsDir, equinoxLauncherFile.getName().replaceAll(PluginUtils.getEclipsePluginMask(), "$1_$2"))));
         javaExecHandleBuilder.setMain("org.eclipse.equinox.launcher.Main");
         List<String> programArgs = new ArrayList<String>();
         // TODO how much do we need? -os linux -ws gtk -arch x86_64 -nl en_US
         programArgs.add("-os");
-        programArgs.add(PlatformConfig.current_os);
+        programArgs.add(PlatformConfig.current_os_filesystem_suffix);
         if ("linux".equals(PlatformConfig.current_os)) {
             programArgs.add("-ws");
             programArgs.add("gtk");
+        } else if ("windows".equals(PlatformConfig.current_os)) {
+            programArgs.add("-ws");
+            programArgs.add("win32");
         }
         programArgs.add("-arch");
         programArgs.add(PlatformConfig.current_arch);
 
-        // programArgs.add("-consoleLog");
+        if (getExtension(testTask).isConsoleLog()) {
+            programArgs.add("-consoleLog");
+        }
+        File optionsFile = getExtension(testTask).getOptionsFile();
+        if (optionsFile != null) {
+            programArgs.add("-debug");
+            programArgs.add(optionsFile.getAbsolutePath());
+        }
         programArgs.add("-version");
         programArgs.add("3");
         programArgs.add("-port");
@@ -110,25 +126,35 @@ public class EclipseTestExecuter implements TestExecuter {
         programArgs.add(getExtension(testTask).getTestPluginName());
 
         javaExecHandleBuilder.setArgs(programArgs);
+        javaExecHandleBuilder.setSystemProperties(testTask.getSystemProperties());
+        javaExecHandleBuilder.setEnvironment(testTask.getEnvironment());
+
+        // TODO this should be specified when creating the task (to allow overrid in build script)
         List<String> jvmArgs = new ArrayList<String>();
-        jvmArgs.add("-Dosgi.requiredJavaVersion=1.7");
         jvmArgs.add("-XX:MaxPermSize=256m");
         jvmArgs.add("-Xms40m");
         jvmArgs.add("-Xmx512m");
-        jvmArgs.add("-Declipse.pde.launch=true");
-        jvmArgs.add("-Declipse.p2.data.area=@config.dir/p2");
-        jvmArgs.add("-Dfile.encoding=UTF-8");
-        if(PlatformConfig.current_os == "macosx") {
+
+        // uncomment to debug spawned Eclipse instance
+        // jvmArgs.add("-Xdebug");
+        // jvmArgs.add("-Xrunjdwp:transport=dt_socket,address=8998,server=y");
+
+        if (PlatformConfig.current_os == "macosx") {
             jvmArgs.add("-XstartOnFirstThread");
         }
         javaExecHandleBuilder.setJvmArgs(jvmArgs);
         javaExecHandleBuilder.setWorkingDir(testTask.getProject().getBuildDir());
 
+        final CountDownLatch latch = new CountDownLatch(1);
         Future<?> eclipseJob = threadPool.submit(new Runnable() {
             @Override
             public void run() {
-                ExecResult execResult = javaExecHandleBuilder.execute();
-                execResult.assertNormalExitValue();
+                try {
+                    ExecResult execResult = javaExecHandleBuilder.execute();
+                    execResult.assertNormalExitValue();
+                } finally {
+                    latch.countDown();
+                }
             }
         });
         //TODO
@@ -144,13 +170,17 @@ public class EclipseTestExecuter implements TestExecuter {
                         wait();
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
+                    } finally {
+                        latch.countDown();
                     }
                 }
             }
         });
         try {
-            eclipseJob.get(5, TimeUnit.MINUTES);
-            testCollectorJob.get(5, TimeUnit.MINUTES);
+            latch.await(getExtension(testTask).getTestTimeoutSeconds(), TimeUnit.SECONDS);
+            // short chance to do cleanup
+            eclipseJob.get(15, TimeUnit.SECONDS);
+            testCollectorJob.get(15, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             throw new GradleException("Test execution failed", e);
         } catch (ExecutionException e) {
@@ -188,16 +218,20 @@ public class EclipseTestExecuter implements TestExecuter {
     public static class NoopTestResultProcessor implements TestResultProcessor {
 
         @Override
-        public void started(TestDescriptorInternal testDescriptorInternal, TestStartEvent testStartEvent) {}
+        public void started(TestDescriptorInternal testDescriptorInternal, TestStartEvent testStartEvent) {
+        }
 
         @Override
-        public void completed(Object o, TestCompleteEvent testCompleteEvent) {}
+        public void completed(Object o, TestCompleteEvent testCompleteEvent) {
+        }
 
         @Override
-        public void output(Object o, TestOutputEvent testOutputEvent) {}
+        public void output(Object o, TestOutputEvent testOutputEvent) {
+        }
 
         @Override
-        public void failure(Object o, Throwable throwable) {}
+        public void failure(Object o, Throwable throwable) {
+        }
     }
 
     private class ClassNameCollectingProcessor implements TestClassProcessor {
